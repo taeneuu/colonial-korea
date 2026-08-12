@@ -605,6 +605,13 @@
     border: 2px solid var(--moss-deep);
     transform: rotate(45deg);
   }
+  /* '전체 시기 한눈에 보기' 모드에서 연대별 색상을 나타내는 범례 점 */
+  .decade-legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
 
   /* 모바일 화면에서는 미주 인셋 지도가 메인 지도를 가리지 않도록,
      미니 지도 대신 작은 라벨 칩(Chip) 형태의 간소화 UI로 대체 */
@@ -1307,6 +1314,27 @@
       transform: rotate(180deg);
     }
 
+    /* 바텀시트 3단계 상태(collapsed/default/expanded)를 점 3개로 표시하는 인디케이터 */
+    .sheet-state-dots {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 5px;
+      padding-bottom: 4px;
+    }
+    .sheet-state-dots .dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--line);
+      transition: all 0.2s ease;
+    }
+    .sheet-state-dots .dot.active {
+      background: var(--seal);
+      width: 14px;
+      border-radius: 3px;
+    }
+
     .controls-section { 
       position: relative;
       flex-direction: row; 
@@ -1467,7 +1495,7 @@
     <div class="creator-tag">제작 : 한백고 이태형</div>
     <div class="eyebrow">HGIS 기반 한국사 인터랙티브 학습 자료</div>
     <h1>시공간으로 잇는 독립운동</h1>
-    <p>지도에서 단체를 클릭하면 <strong>상세 사료 및 활동 정보 팝업</strong>을 확인할 수 있습니다.</p>
+    <p>시대와 공간을 클릭해 <strong>독립운동의 흐름</strong>을 살펴보세요.</p>
     <div class="brush-rule"></div>
   </header>
 
@@ -1523,6 +1551,7 @@
       <div class="map-legend" id="mapLegend">
         <div class="map-legend-item"><span class="map-legend-swatch circle"></span>단체</div>
         <div class="map-legend-item"><span class="map-legend-swatch diamond"></span>사건</div>
+        <div id="decadeLegendExtra"></div>
       </div>
       <div class="usa-inset-box" onclick="jumpTo('미주')">
         <div class="usa-inset-title">🌐 미주 (미국 본토/하와이)</div>
@@ -1536,6 +1565,11 @@
     <div class="mobile-sheet-header">
       <div class="sheet-drag-area" id="sheetDragArea">
         <span class="sheet-handle"></span>
+      </div>
+      <div class="sheet-state-dots" id="sheetStateDots">
+        <span class="dot" data-state="collapsed"></span>
+        <span class="dot" data-state="default"></span>
+        <span class="dot" data-state="expanded"></span>
       </div>
       <button class="mobile-list-toggle-btn" onclick="toggleBottomSheet()">
         <p class="panel-title" id="detailTitle">단체 목록</p>
@@ -1597,6 +1631,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (modal) modal.style.display = 'none';
   }
   setupBottomSheetTouchEvents();
+  updateSheetStateDots();
 });
 
 function checkAccessCode() {
@@ -1622,6 +1657,22 @@ function toggleBottomSheet() {
     panel.classList.remove('expanded');
     panel.classList.add('collapsed'); // 접힘 상태로
   }
+  updateSheetStateDots();
+}
+
+// 현재 바텀시트 상태(collapsed/default/expanded)에 맞춰 점 인디케이터를 갱신
+function updateSheetStateDots() {
+  const panel = document.getElementById('detailPanel');
+  const dotsWrap = document.getElementById('sheetStateDots');
+  if (!panel || !dotsWrap) return;
+
+  let state = 'default';
+  if (panel.classList.contains('collapsed')) state = 'collapsed';
+  else if (panel.classList.contains('expanded')) state = 'expanded';
+
+  dotsWrap.querySelectorAll('.dot').forEach(dot => {
+    dot.classList.toggle('active', dot.dataset.state === state);
+  });
 }
 
 /* [③ 반영] 드래그 스냅 및 터치 이벤트 제어 (상단 핸들 바 영역 잡고 끌었을 때로 한정) */
@@ -1656,6 +1707,7 @@ function setupBottomSheetTouchEvents() {
         panel.classList.add('collapsed'); // default -> collapsed
       }
     }
+    updateSheetStateDots();
   }, { passive: true });
 }
 
@@ -1672,6 +1724,14 @@ const REGION_COORDS = {
   "화북": [39.9042, 116.4074],
   "미주": [37.7749, -122.4194],
   "일본": [35.6762, 139.6503]
+};
+
+// "전체 시기 한눈에 보기" 모드에서 연대를 구분하기 위한 색상 매핑
+const DECADE_COLORS = {
+  "1910": "#A6392C",
+  "1920": "#1F3A52",
+  "1930": "#566B3E",
+  "1940": "#6B3A7D"
 };
 
 const ROUTES = {
@@ -1711,7 +1771,7 @@ const DATA = {
     era: "무단통치",
     caption: "국내 비밀결사 조직과 국외 독립운동 기지 건설로 투쟁의 기반을 다진 시기",
     groups: [
-      { region:"국내", zone:"domestic", label:"국내 (비밀 결사)", orgs:[
+      { region:"국내", zone:"domestic", label:"국내", orgs:[
         {
           name:"독립 의군부", category:"비밀 결사", year:"1912년", city:"호남 지역", coords:[35.8242, 127.1480], people:"임병찬, 고종의 밀지", tags:["복벽주의", "국권반환요구서"],
           desc:"고종의 밀서를 받아 호남 지역에서 조직된 복벽주의 계열의 비밀 결사입니다. 국권 반환 요구서를 일제 총독과 일본 정부에 제출하려다 조직이 폭로되었습니다.",
@@ -1747,7 +1807,7 @@ const DATA = {
         },
         {
           name:"신흥 무관 학교", category:"무장 투쟁", year:"1911년", people:"이회영, 이상룡, 지청천", tags:["독립군양성", "삼원보"],
-          desc:"독립군 간부 양성 기관으로, 수천 명의 졸업생을 배출하여 1920년대 봉오동·청산리 전투의 핵심 주역이 되었습니다."
+          desc:"1911년 신흥강습소로 출발하여 독립군 간부를 양성한 기관으로, 1919년 신흥무관학교로 개편·개칭되었습니다. 수천 명의 졸업생을 배출하여 1920년대 봉오동·청산리 전투의 핵심 주역이 되었습니다."
         }
       ]},
       { region:"북간도", zone:"abroad", label:"북간도 (명동촌)", orgs:[
@@ -1947,7 +2007,7 @@ const DATA = {
           desc:"양세봉 장군을 중심으로 남만주 지역에서 중국 의용군과 연합하여 영릉가, 흥경성 전투 등에서 대승을 거두었습니다."
         },
         {
-          name:"동북 항일 연군", category:"무장 투쟁", year:"1936년", city:"만주", coords:[41.4000, 128.2000], people:"한·중 사회주의 유격대(김일성 등)", tags:["만주", "사회주의유격대", "항일연합"],
+          name:"동북 항일 연군", category:"무장 투쟁", year:"1936년", city:"만주", coords:[41.4000, 128.2000], people:"한·중 사회주의 계열 항일 유격대원", tags:["만주", "사회주의유격대", "항일연합"],
           desc:"만주 일대에서 한인과 중국인 사회주의자들이 연합하여 형성한 항일 유격 부대입니다."
         },
         {
@@ -2110,7 +2170,7 @@ map.addControl(new ResetControl());
 function resetMapView() {
   // 모바일 화면(너비 860px 이하)이면 4단계, 그 외 PC 화면이면 기존 1940년대 조건 적용
   const isMobile = window.innerWidth <= 860;
-  const defaultZoom = isMobile ? 4 : (currentDecade === "1940" ? 4 : 5);
+  const defaultZoom = isMobile ? 4 : ((currentDecade === "1940" || currentDecade === "all") ? 4 : 5);
 
   map.flyTo([38.0, 125.0], defaultZoom, { duration: 0.8 });
 }
@@ -2166,7 +2226,7 @@ function switchDecade(dec) {
   if (isMobile) {
     map.setView([38.0, 125.0], 4);
   } else {
-    if (dec === "1940") {
+    if (dec === "1940" || dec === "all") {
       map.setView([38.0, 125.0], 4);
     } else {
       map.setView([38.0, 125.0], 5);
@@ -2176,6 +2236,15 @@ function switchDecade(dec) {
 }
 
 const decadeNav = document.getElementById('decadeNav');
+
+// 전체 시기(1910~1945)를 한 지도에서 볼 수 있는 통합보기 탭
+const allBtn = document.createElement('button');
+allBtn.className = 'decade-btn';
+allBtn.dataset.dec = 'all';
+allBtn.innerHTML = `<span class="yr">전체</span><span class="era">시기 한눈에 보기</span>`;
+allBtn.onclick = () => switchDecade('all');
+decadeNav.appendChild(allBtn);
+
 Object.keys(DATA).forEach(dec => {
   const btn = document.createElement('button');
   btn.className = 'decade-btn';
@@ -2392,14 +2461,37 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+// '전체' 통합보기를 위해 모든 연대의 그룹을 지역(region) 기준으로 병합하고,
+// 각 단체/사건에 소속 연대(_decade) 정보를 붙여 반환
+function buildAllDecadesGroups() {
+  const merged = {};
+  Object.keys(DATA).forEach(dec => {
+    DATA[dec].groups.forEach(g => {
+      const key = g.region;
+      if (!merged[key]) {
+        merged[key] = { region: g.region, zone: g.zone, label: g.label, coords: g.coords || null, orgs: [] };
+      }
+      if (!merged[key].coords && g.coords) merged[key].coords = g.coords;
+      g.orgs.forEach(org => {
+        merged[key].orgs.push({ ...org, _decade: dec });
+      });
+    });
+  });
+  return Object.values(merged);
+}
+
 function render() {
   document.querySelectorAll('.decade-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.dec === currentDecade);
   });
 
-  const decData = DATA[currentDecade];
-  document.getElementById('mapTitle').innerText = `${currentDecade}년대 독립운동 지도`;
+  const isAllMode = (currentDecade === 'all');
+  const decData = isAllMode
+    ? { caption: "모든 연대(1910~1945)의 단체와 사건을 한 지도에서 살펴봅니다. 마커 색으로 소속 연대를 구분합니다.", groups: buildAllDecadesGroups() }
+    : DATA[currentDecade];
+  document.getElementById('mapTitle').innerText = isAllMode ? "전체 시기 독립운동 지도 (1910~1945)" : `${currentDecade}년대 독립운동 지도`;
   document.getElementById('mapCaption').innerText = decData.caption;
+  updateDecadeLegend(isAllMode);
 
   const activeFilteredGroups = filterOrgs(decData.groups);
   
@@ -2419,9 +2511,24 @@ function render() {
   renderDetailList(activeFilteredGroups);
 }
 
+// '전체' 모드일 때만 지도 범례에 연대별 색상 항목을 표시
+function updateDecadeLegend(isAllMode) {
+  const extra = document.getElementById('decadeLegendExtra');
+  if (!extra) return;
+  if (!isAllMode) {
+    extra.innerHTML = '';
+    return;
+  }
+  extra.innerHTML = Object.keys(DECADE_COLORS).map(dec =>
+    `<div class="map-legend-item"><span class="decade-legend-dot" style="background:${DECADE_COLORS[dec]};"></span>${dec}년대</div>`
+  ).join('');
+}
+
 // 줌 레벨에 따라 마커만 다시 그리는 전용 함수
 function renderMapMarkersOnly() {
-  const decData = DATA[currentDecade];
+  const decData = (currentDecade === 'all')
+    ? { groups: buildAllDecadesGroups() }
+    : DATA[currentDecade];
   const activeFilteredGroups = filterOrgs(decData.groups);
   renderMapMarkers(activeFilteredGroups);
 }
@@ -2500,10 +2607,18 @@ function renderMapMarkers(filteredGroups) {
           labelHtml = `<span class="${labelClass} ${labelClass}-multi">${namesHtml}</span>`;
         }
 
+        // '전체' 모드에서 단일 항목 마커는 소속 연대 색상으로 표시 (CSS 변수를 마커 범위 내에서만 덮어씀)
+        const singleOrgDecade = (orgsAtPoint.length === 1) ? orgsAtPoint[0]._decade : null;
+        const decadeStyleAttr = (singleOrgDecade && DECADE_COLORS[singleOrgDecade])
+          ? (isEvent
+              ? ` style="--moss:${DECADE_COLORS[singleOrgDecade]}; --moss-deep:${DECADE_COLORS[singleOrgDecade]};"`
+              : ` style="--seal:${DECADE_COLORS[singleOrgDecade]}; --seal-deep:${DECADE_COLORS[singleOrgDecade]};"`)
+          : '';
+
         const customIcon = L.divIcon({
           className: markerClass,
           html: `
-            <div class="${nodeClass}" data-orgkeys="${orgKeys}">
+            <div class="${nodeClass}" data-orgkeys="${orgKeys}"${decadeStyleAttr}>
               ${labelHtml}
             </div>
           `,
@@ -2516,8 +2631,9 @@ function renderMapMarkers(filteredGroups) {
           const singleOrg = orgsAtPoint[0];
           marker.on('click', () => showModal(singleOrg));
         }
+        const pointKeySuffix = cg.coords[0].toFixed(4) + "_" + cg.coords[1].toFixed(4);
         orgsAtPoint.forEach(o => {
-          currentMarkers[`${group.region}-${o.name}`] = marker;
+          currentMarkers[`${group.region}-${o.name}-${pointKeySuffix}`] = marker;
         });
       });
     } else {
@@ -2592,6 +2708,10 @@ function renderDetailList(filteredGroups) {
 
       const tagsHtml = org.tags ? org.tags.map(t => `<span class="org-tag">#${t}</span>`).join("") : "";
       const locationText = org.city ? ` <span class="org-location">[${org.city}]</span>` : '';
+      // '전체' 모드에서만 존재하는 소속 연대 정보를 배지로 표시
+      const decadeBadgeHtml = org._decade
+        ? `<span class="org-category" style="background:${DECADE_COLORS[org._decade]}22; color:${DECADE_COLORS[org._decade]}; font-weight:700;">${org._decade}년대</span>`
+        : '';
 
       orgsHtml += `
         <div class="org-card ${cardEventClass}" 
@@ -2600,7 +2720,10 @@ function renderDetailList(filteredGroups) {
              onmouseleave='onOrgCardHoverEnd("${group.region}", "${org.name}")'>
           <div class="org-header">
             <span class="org-name">${org.name}${locationText}</span>
-            <span class="org-category ${catEventClass}">${org.category} · ${org.year}</span>
+            <span style="display:flex; align-items:center; gap:4px; flex-shrink:0;">
+              <span class="org-category ${catEventClass}">${org.category} · ${org.year}</span>
+              ${decadeBadgeHtml}
+            </span>
           </div>
           <div class="org-desc">${org.desc}</div>
           <div class="org-tags">${tagsHtml}</div>
@@ -2670,6 +2793,7 @@ function showModal(org) {
     <span class="modal-badge ${badgeClass}">${org.category}</span>
     <span class="modal-badge">${org.year}</span>
     ${org.city ? `<span class="modal-badge">📍 ${org.city}</span>` : ''}
+    ${org._decade ? `<span class="modal-badge">${org._decade}년대</span>` : ''}
   `;
 
   document.getElementById('mPeople').innerText = org.people ? org.people : '정보 없음';
@@ -2691,6 +2815,16 @@ function closeModal(e) {
     document.getElementById('modalOverlay').classList.remove('active');
   }
 }
+
+// PC 환경에서 Esc 키로 상세 정보 모달을 닫을 수 있도록 처리
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const overlay = document.getElementById('modalOverlay');
+    if (overlay && overlay.classList.contains('active')) {
+      closeModal();
+    }
+  }
+});
 
 // 초기화 실행
 render();
