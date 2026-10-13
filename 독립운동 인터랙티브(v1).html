@@ -924,11 +924,27 @@ const map = L.map('map', {
   maxBoundsViscosity: 0.9
 });
 
-L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-  attribution: '&copy; OpenStreetMap &copy; CARTO',
-  subdomains: 'abcd',
-  maxZoom: 19
-}).addTo(map);
+// 배경 지도 타일 (API 키 불필요)
+// ※ 기존 CARTO 타일은 API 키를 요구하게 바뀌어 'API KEY REQUIRED' 이미지만 표시됨.
+//   Esri World Street Map을 기본으로 쓰고, 타일 로딩이 실패하면 OpenStreetMap 타일로 자동 전환.
+function addBaseTiles(targetMap, showAttribution) {
+  const esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+    attribution: showAttribution ? 'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors' : '',
+    maxZoom: 19
+  });
+  let switched = false;
+  esri.on('tileerror', function () {
+    if (switched) return;
+    switched = true;
+    targetMap.removeLayer(esri);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: showAttribution ? '&copy; OpenStreetMap contributors' : '',
+      maxZoom: 19
+    }).addTo(targetMap);
+  });
+  esri.addTo(targetMap);
+}
+addBaseTiles(map, true);
 
 // 2. 미주(USA) 인셋 Leaflet 실제 지도 초기화
 const usaMap = L.map('usaMap', {
@@ -942,10 +958,7 @@ const usaMap = L.map('usaMap', {
   touchZoom: false
 });
 
-L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-  subdomains: 'abcd',
-  maxZoom: 19
-}).addTo(usaMap);
+addBaseTiles(usaMap, false);
 
 let currentMarkers = {};
 let usaMarker = null; // 미주 지도 내 마커 참조 저장
